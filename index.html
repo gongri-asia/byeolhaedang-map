@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>별해당 · 대운 흐름 지도</title>
+<style>
+:root{--bg:#f8f7f4;--panel:#ffffffd9;--ink:#17202a;--muted:#65717b;--line:#dce2e5;--accent:#233843;--red:#864d38;--redDark:#6b3728;--gold:#6e857c;--soft:#eef2f0}
+*{box-sizing:border-box} body{margin:0;font-family:Pretendard,"Apple SD Gothic Neo",system-ui,sans-serif;background:linear-gradient(120deg,#eee9dd,#f8f7f4 50%,#eef1f1);color:var(--ink)}
+.wrap{max-width:1120px;margin:26px auto;padding:0 18px}.top{display:grid;grid-template-columns:310px 1fr;gap:18px}
+.panel{background:var(--panel);border:1px solid #fff;border-radius:18px;padding:21px;box-shadow:0 14px 35px #25344312}
+.panel:first-child{border-top:1px solid #fff}
+h1{font:22px Georgia,"Noto Serif KR",serif;margin:0 0 7px;letter-spacing:-.06em}.sub{font-size:12px;color:var(--muted);margin-bottom:17px;line-height:1.65}
+label{display:block;font-size:12px;font-weight:750;color:#52606a;margin:13px 0 6px}
+input,select,button{width:100%;font:inherit;border-radius:9px;border:1px solid var(--line);padding:11px;background:#fff}
+button{margin-top:10px;background:var(--accent);color:white;border:0;font-weight:700;cursor:pointer;transition:transform .12s ease,opacity .12s ease}button:hover{transform:translateY(-1px);opacity:.94}
+button.secondary{background:var(--soft);color:#53616a;border:1px solid var(--line)}
+button.danger{background:#6b5847}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.actions button{white-space:nowrap}
+textarea{width:100%;min-height:95px;resize:vertical;font:inherit;border-radius:9px;border:1px solid var(--line);padding:11px;background:#fff}
+.saved{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.checks{margin-top:14px;font-size:13px;color:#53616a}
+.checks label{display:flex;gap:8px;align-items:center;font-weight:400;margin:7px 0}.checks input{width:auto}
+.seq{margin-top:15px;padding:11px 13px;background:#f5f3ee;border-radius:10px;font-size:12px;line-height:1.7;color:#536069;word-break:keep-all}
+svg{width:100%;height:auto;display:block}.legend{font-size:12px;color:var(--muted);margin-top:10px}
+@media(max-width:850px){.top{grid-template-columns:1fr}}
+
+@media (max-width: 760px){
+  body{padding:12px 8px 28px}
+  .wrap{width:100%;max-width:100%}
+  .panel{padding:14px 12px}
+  .controls{grid-template-columns:1fr 1fr;gap:10px}
+  .controls .wide{grid-column:1/-1}
+  input,select,button{min-height:44px;font-size:16px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stage{overflow:visible}
+  #map{width:100% !important;max-width:100% !important;min-width:0 !important;height:auto !important;margin:0 auto}
+  h1{font-size:22px}
+  .sub{font-size:13px;line-height:1.55}
+}
+ @media (max-width: 430px){
+  .controls{grid-template-columns:1fr}
+  .controls .wide{grid-column:auto}
+  .actions{grid-template-columns:1fr}
+  #map{width:100% !important;max-width:100% !important;min-width:0 !important;margin:0 auto}
+ }
+ body.embed .wrap{max-width:760px;margin:0 auto;padding:0}
+ body.embed .top{display:block}
+ body.embed .top>section:first-child{display:none}
+ body.embed .panel{border:0;border-radius:0;padding:0;box-shadow:none;background:transparent}
+ </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <section class="panel">
+      <h1>별해당 · 대운 흐름 지도</h1>
+      <div class="sub">월주와 순·역행을 입력하면 대운을 자동 생성하고, 각 대운의 시기와 흐름을 지도에 표시합니다.</div>
+      <label>인물 이름</label><input id="name" value="공리">
+      <label>출생연도</label><input id="birthYear" type="number" value="1983" placeholder="예: 1983" min="1900" max="2100">
+      <label>월주</label><input id="month" value="갑인" maxlength="2">
+      <div class="row">
+        <div><label>첫 대운 나이</label><input id="age" type="number" value="10" min="1" max="10"></div>
+        <div><label>진행 방향</label><select id="dir"><option value="-1">역행</option><option value="1">순행</option></select></div>
+      </div>
+      <label>표시할 대운 수</label><input id="count" type="number" value="8" min="8" max="8" disabled>
+      <div class="checks">
+        <label><input id="showAge" type="checkbox" checked> 나이 표시</label>
+        <label><input id="showGrid" type="checkbox" checked> 보조선 표시</label>
+      </div>
+      <label>임상 메모</label>
+      <textarea id="memo" placeholder="예: 27대 경인 - 스타트업 입사 / 37대 기축 - 은퇴"></textarea>
+      <button onclick="draw()">지도 만들기</button>
+      <div class="actions">
+        <button class="secondary" onclick="savePerson()">인물 저장</button>
+        <button class="secondary" onclick="savePNG()">PNG 저장</button>
+      </div>
+      <div class="saved">
+        <label>저장된 인물</label>
+        <select id="savedPeople" onchange="loadPerson(this.value)"><option value="">선택해서 불러오기</option></select>
+        <div class="actions">
+          <button class="danger" onclick="deletePerson()">선택 인물 삭제</button>
+          <button class="secondary" onclick="exportData()">전체 백업</button>
+        </div>
+        <div class="actions">
+          <button class="secondary" onclick="document.getElementById('importFile').click()">백업 복원</button>
+          <button class="secondary" onclick="clearForm()">새 인물</button>
+        </div>
+        <input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importData(event)">
+        <div class="small">인물 저장은 이 브라우저에 보관돼. 전체 백업(JSON)을 받아두면 다른 PC나 Mac에서도 복원할 수 있어.</div>
+      </div>
+      <div class="seq" id="seq"></div>
+      <div class="legend">※ 월주는 별도 색상, 출생연도를 입력하면 현재 연도 기준 대운을 강조 표시함.<br>※ 이 지도는 길흉이나 성공의 크기를 판단하는 도구가 아니라, 현재 대운에서 힘을 쓰기 좋은 방향을 살펴보는 연구용 지도입니다.</div>
+    </section>
+    <section class="panel">
+      <div class="small" style="text-align:center;margin:0 0 8px">모바일에서는 화면 폭에 맞춰 표시됩니다. 필요하면 두 손가락으로 확대해 자세히 볼 수 있어요.</div>
+      <svg id="map" viewBox="0 0 760 1345" preserveAspectRatio="xMidYMin meet" aria-label="대운 흐름 지도"></svg>
+    </section>
+  </div>
+</div>
+<script>
+const stems=['갑','을','병','정','무','기','경','신','임','계'];
+const branches=['자','축','인','묘','진','사','오','미','신','유','술','해'];
+const ganzhi=[];
+for(let i=0;i<60;i++) ganzhi.push(stems[i%10]+branches[i%12]);
+
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+let selectedIndex=null;
+const query=new URLSearchParams(location.search);
+const embedded=query.get('embed')==='1';
+function notifySelection(){
+ if(window.parent!==window)window.parent.postMessage({type:'byeolhaedang-map-select',daewoon:Math.max(0,selectedIndex-1)},location.origin);
+}
+function applyQuery(){
+ const set=(id,key)=>{const value=query.get(key);if(value!==null)document.getElementById(id).value=value};
+ set('name','name');set('birthYear','birthYear');set('month','month');set('age','age');set('dir','dir');
+ const selected=Number(query.get('selected'));
+ if(Number.isInteger(selected)&&selected>=1&&selected<=8)selectedIndex=selected;
+ if(embedded)document.body.classList.add('embed');
+}
+// Set this only after the private Worker is deployed and tested.
+const MAP_API_URL='https://byeolhaedang-map-api.gongri-asia.workers.dev/calculate';
+let calculationCache=null, drawVersion=0;
+async function draw(){
+ const version=++drawVersion;
+ const m=document.getElementById('month').value.trim();
+ const idx=ganzhi.indexOf(m);
+ if(idx<0){alert('월주를 예: 계사, 갑인처럼 두 글자로 입력해줘.');return}
+ const dir=+document.getElementById('dir').value, age=Math.max(1,Math.min(10,+document.getElementById('age').value||1)), count=8;
+  document.getElementById('age').value=age;
+ const birthYear=+document.getElementById('birthYear').value || null;
+ const currentYear=new Date().getFullYear();
+ const currentAge=birthYear ? currentYear-birthYear : null;
+ const items=[{gz:m,age:null,month:true,current:false,startYear:null,endYear:null}];
+ for(let k=1;k<=count;k++){
+   let j=(idx+dir*k+60)%60;
+   const daAge=age+(k-1)*10;
+   const startYear=birthYear ? birthYear+daAge-1 : null;
+   const endYear=startYear!==null ? startYear+9 : null;
+   const isCurrent=birthYear!==null && currentYear>=startYear && currentYear<=endYear;
+   items.push({gz:ganzhi[j],age:daAge,month:false,current:isCurrent,startYear,endYear});
+ }
+ document.getElementById('seq').innerHTML='<b>'+esc(document.getElementById('name').value||'인물')+'</b><br>'+
+ items.map((o,i)=>i===0?'월주 '+o.gz:(o.age+'대 '+o.gz+(o.startYear!==null?' ('+o.startYear+'~'+o.endYear+')':''))).join(' → ');
+ try{
+  const key=JSON.stringify(items.map(o=>o.gz));
+  let points;
+  if(calculationCache?.key===key)points=calculationCache.points;
+  else{
+   const response=await fetch(MAP_API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pillars:items.map(o=>o.gz)}),signal:AbortSignal.timeout(10000)});
+   if(!response.ok)throw new Error(response.status===429?'요청이 많아. 1분 후 다시 시도해줘.':'계산 서버에 연결하지 못했어. 잠시 후 다시 시도해줘.');
+   const data=await response.json();
+   if(!Array.isArray(data.points)||data.points.length!==items.length||data.points.some((p,i)=>p.gz!==items[i].gz||!Number.isFinite(p.x)||!Number.isFinite(p.y)||!p.guide))throw new Error('계산 결과를 확인하지 못했어.');
+   points=data.points;
+   if(version!==drawVersion)return;
+   calculationCache={key,points};
+  }
+  if(version!==drawVersion)return;
+  render(items.map((o,i)=>({...o,...points[i]})));
+ }catch(error){
+  if(version!==drawVersion)return;
+  document.getElementById('map').innerHTML='';
+  document.getElementById('seq').textContent=error.message || '계산에 실패했어.';
+ }
+}
+function render(items){
+ const svg=document.getElementById('map'), NS='http://www.w3.org/2000/svg';
+ svg.innerHTML='';
+ const W=760,H=1345,cx=380,cy=380,scaleX=28,scaleY=35;
+ function el(tag,attrs={},txt=''){let e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(txt)e.textContent=txt;svg.appendChild(e);return e}
+ function gaugeLevel(v){
+   const a=Math.abs(v);
+   if(a<1.5)return '균형';
+   if(a<3.5)return '경향';
+   if(a<6)return '뚜렷';
+   return '강함';
+ }
+ function gaugeDirection(v,left,right){
+   if(Math.abs(v)<1.5)return '균형';
+   return v<0?left:right;
+ }
+ function drawGauge(x,y,w,left,right,v){
+   const max=10,mid=x+w/2,clamped=Math.max(-max,Math.min(max,v));
+   const pos=mid+(clamped/max)*(w/2);
+   el('text',{x:x-12,y:y+4,'text-anchor':'end','font-size':9.5,'font-weight':700,fill:'#53616a'},left);
+   el('text',{x:x+w+12,y:y+4,'font-size':9.5,'font-weight':700,fill:'#53616a'},right);
+   el('line',{x1:x,y1:y,x2:x+w,y2:y,stroke:'#dce2e5','stroke-width':5,'stroke-linecap':'round'});
+   el('line',{x1:mid,y1:y-6,x2:mid,y2:y+6,stroke:'#b6c0c2','stroke-width':1});
+   el('circle',{cx:pos,cy:y,r:6,fill:'#6e857c',stroke:'#ffffff','stroke-width':2});
+ }
+ el('rect',{x:0,y:0,width:W,height:H,rx:18,fill:'#ffffff'});
+ if(document.getElementById('showGrid').checked){
+   // Fine coordinate grid: minor 0.5 steps, major 1.0 steps.
+   // No numbers are shown; the visual rhythm alone indicates distance.
+   const left=80, right=680, top=80, bottom=680;
+   const minorStep=30;
+   for(let q=left;q<=right;q+=minorStep){
+     const idx=Math.round((q-left)/minorStep);
+     const major=idx%2===0;
+     el('line',{
+       x1:q,y1:top,x2:q,y2:bottom,
+       stroke:major?'#dce2e5':'#edf0f0',
+       'stroke-width':major?1.05:0.65,
+       opacity:major?0.78:0.62
+     });
+   }
+   for(let q=top;q<=bottom;q+=minorStep){
+     const idx=Math.round((q-top)/minorStep);
+     const major=idx%2===0;
+     el('line',{
+       x1:left,y1:q,x2:right,y2:q,
+       stroke:major?'#dce2e5':'#edf0f0',
+       'stroke-width':major?1.05:0.65,
+       opacity:major?0.78:0.62
+     });
+   }
+ }
+ el('line',{x1:72,y1:cy,x2:688,y2:cy,stroke:'#65717b','stroke-width':1.7});
+ el('line',{x1:cx,y1:72,x2:cx,y2:688,stroke:'#65717b','stroke-width':1.7});
+ // arrow heads
+ el('path',{d:'M688 380 l-10 -6 v12 z',fill:'#65717b'}); el('path',{d:'M72 380 l10 -6 v12 z',fill:'#65717b'});
+ el('path',{d:'M380 72 l-6 10 h12 z',fill:'#65717b'}); el('path',{d:'M380 688 l-6 -10 h12 z',fill:'#65717b'});
+ el('text',{x:48,y:376,'text-anchor':'middle','font-size':14,'font-weight':800},'심화');
+ el('text',{x:48,y:396,'text-anchor':'middle','font-size':11,fill:'#65717b'},'자기집중');
+ el('text',{x:712,y:376,'text-anchor':'middle','font-size':14,'font-weight':800},'확장');
+ el('text',{x:712,y:396,'text-anchor':'middle','font-size':11,fill:'#65717b'},'외연');
+ el('text',{x:380,y:34,'text-anchor':'middle','font-size':14,'font-weight':800},'보이는 성취');
+ el('text',{x:380,y:724,'text-anchor':'middle','font-size':14,'font-weight':800},'쌓이는 성취');
+ el('text',{x:82,y:82,'font-size':15,'font-weight':700},'심화 · 구현');
+ el('text',{x:678,y:82,'text-anchor':'end','font-size':15,'font-weight':700},'확장 · 구현');
+ el('text',{x:82,y:686,'font-size':15,'font-weight':700},'심화 · 축적');
+ el('text',{x:678,y:686,'text-anchor':'end','font-size':15,'font-weight':700},'확장 · 축적');
+
+ el('circle',{cx:520,cy:27,r:6,fill:'#864d38',stroke:'#6b3728','stroke-width':1.5});
+ el('circle',{cx:520,cy:27,r:2,fill:'#ffffff'});
+ el('text',{x:531,y:31,'font-size':11,fill:'#65717b'},'월주');
+ el('circle',{cx:575,cy:27,r:5,fill:'#864d38',stroke:'#6b3728','stroke-width':1.5});
+ el('text',{x:585,y:31,'font-size':11,fill:'#65717b'},'현재 대운');
+
+ const nowYear=new Date().getFullYear();
+ const pts=items.map((o,i)=>{
+   let {x,y}=o;
+   const currentByYear=!o.month && o.startYear!==null && nowYear>=o.startYear && nowYear<=o.endYear;
+   return {...o,current:(o.current||currentByYear),x,y,px:cx+x*scaleX,py:cy-y*scaleY,index:i};
+ });
+ // chronological flow arrows are drawn explicitly below
+ for(let i=0;i<pts.length-1;i++){
+   // IMPORTANT: use the array order only.
+   // pts[0] = month pillar, pts[1] = first daewoon, pts[2] = second daewoon...
+   // No rerouting, sorting, or collision avoidance is allowed.
+   const a=pts[i], b=pts[i+1];
+   const dx=b.px-a.px, dy=b.py-a.py, len=Math.hypot(dx,dy)||1;
+   const ux=dx/len, uy=dy/len;
+   const startRadius=a.month?9:(a.current?9:7);
+   const endRadius=b.month?9:(b.current?9:7);
+
+   const sx=a.px+ux*(startRadius+4);
+   const sy=a.py+uy*(startRadius+4);
+   const ex=b.px-ux*(endRadius+7);
+   const ey=b.py-uy*(endRadius+7);
+
+   // straight chronological shaft
+   el('line',{
+     x1:sx,y1:sy,x2:ex,y2:ey,
+     stroke:'#718088','stroke-width':2.2,
+     'stroke-dasharray':'5 5',opacity:.84
+   });
+
+   // arrowhead points exactly toward pts[i+1]
+   const nx=-uy, ny=ux;
+   const backX=ex-ux*11, backY=ey-uy*11, half=5.5;
+   el('polygon',{
+     points:[
+       ex+','+ey,
+       (backX+nx*half)+','+(backY+ny*half),
+       (backX-nx*half)+','+(backY-ny*half)
+     ].join(' '),
+     fill:'#718088',opacity:.92
+   });
+
+   // sequence number at the exact midpoint of this chronological segment
+   const mx=(a.px+b.px)/2, my=(a.py+b.py)/2;
+   el('circle',{cx:mx,cy:my,r:8,fill:'#ffffff',opacity:.95});
+   el('text',{
+     x:mx,y:my+3.5,'text-anchor':'middle',
+     'font-size':9.5,'font-weight':700,fill:'#65717b'
+   },String(i+1));
+ }
+ pts.forEach((p,i)=>{
+   if(p.month){
+     // month pillar: colored marker at the exact month-pillar coordinate
+     el('circle',{cx:p.px,cy:p.py,r:9,fill:'#864d38',stroke:'#6b3728','stroke-width':2.6});
+     el('circle',{cx:p.px,cy:p.py,r:3,fill:'#ffffff'});
+   }else{
+     const fill=p.current?'#864d38':'#233843';
+     const stroke=p.current?'#6b3728':'#233843';
+     const radius=p.current?9:7;
+     el('circle',{cx:p.px,cy:p.py,r:radius,fill,stroke,'stroke-width':2.2});
+   }
+   let label=p.month?'월주 '+p.gz:p.gz+(document.getElementById('showAge').checked?' · '+p.age+'대':'');
+   if(p.current) label+=' · 현재';
+   let dx=p.px>560?-12:12, anchor=p.px>560?'end':'start';
+   let labelY=p.py-10;
+   // stagger labels when points are close
+   for(let j=0;j<i;j++){
+     const q=pts[j];
+     if(Math.hypot(p.px-q.px,p.py-q.py)<85 && Math.abs(labelY-(q._labelY||q.py-10))<24){
+       labelY+=24;
+     }
+   }
+   p._labelY=labelY;
+   const special=p.month||p.current;
+   el('text',{
+     x:p.px+dx,y:labelY,'text-anchor':anchor,
+     'font-size':special?14:13,
+     'font-weight':special?800:700,
+     fill:special?'#864d38':'#17202a'
+   },label);
+   if(!p.month){
+     const hit=el('circle',{cx:p.px,cy:p.py,r:19,fill:'transparent',style:'cursor:pointer'});
+     hit.addEventListener('click',()=>{selectedIndex=p.index;notifySelection();draw();});
+   }
+ });
+
+ // Daewoon period + one-line interpretation cards: 1~4 / 5~8.
+ // Two rows are intentionally retained on desktop and mobile for readability.
+ const daewoons=pts.filter(p=>!p.month);
+ const tableX=58, tableY=770, tableW=644;
+ const cols=4, gapX=8, gapY=8, cardH=92;
+ const cardW=(tableW-gapX*(cols-1))/cols;
+ el('text',{x:tableX,y:tableY-18,'font-size':12.5,'font-weight':800,fill:'#65717b'},'대운 시기 · 방향 가이드');
+ el('line',{x1:tableX+137,y1:tableY-22,x2:tableX+tableW,y2:tableY-22,stroke:'#d8cdb9','stroke-width':1});
+
+ daewoons.forEach((p,i)=>{
+   const col=i%cols, row=Math.floor(i/cols);
+   const x=tableX+col*(cardW+gapX);
+   const y=tableY+row*(cardH+gapY);
+   const isCurrent=p.current;
+   const g=p.guide;
+   const isSelected=selectedIndex===p.index;
+   el('rect',{x,y,width:cardW,height:cardH,rx:9,
+     fill:isCurrent?'#fbf4ef':'#fbfcfb',
+     stroke:isSelected?'#6e857c':'#dce2e5',
+     'stroke-width':isSelected?2:1});
+   el('text',{x:x+cardW/2,y:y+22,'text-anchor':'middle',
+     'font-size':isCurrent?13.5:13,'font-weight':isCurrent?800:750,
+     fill:isCurrent?'#864d38':'#17202a'},
+     p.gz+(document.getElementById('showAge').checked?' · '+p.age+'대':'')+(isCurrent?' · 현재':''));
+   const years=p.startYear!==null?(p.startYear+'년 ~ '+p.endYear+'년'):'출생연도 입력 시 연도 표시';
+   el('text',{x:x+cardW/2,y:y+43,'text-anchor':'middle',
+     'font-size':11.2,'font-weight':isCurrent?700:500,
+     fill:isCurrent?'#864d38':'#65717b'},years);
+
+   let lines=[];
+   if(g.zone==='심화 · 구현') lines=['깊어진 것을','세상에 보여줄 때'];
+   else if(g.zone==='확장 · 구현') lines=['가능성을 넓혀','세상에 펼칠 때'];
+   else if(g.zone==='심화 · 축적') lines=['나에게 남을 것을','깊게 쌓을 때'];
+   else lines=['경험의 폭을 넓혀','내 것으로 만들 때'];
+   el('text',{x:x+cardW/2,y:y+65,'text-anchor':'middle',
+     'font-size':10.8,'font-weight':isCurrent?800:650,
+     fill:isCurrent?'#a63f35':'#53616a'},lines[0]);
+   el('text',{x:x+cardW/2,y:y+81,'text-anchor':'middle',
+     'font-size':10.8,'font-weight':isCurrent?800:650,
+     fill:isCurrent?'#a63f35':'#53616a'},lines[1]);
+
+   const hit=el('rect',{x,y,width:cardW,height:cardH,rx:9,fill:'transparent',style:'cursor:pointer'});
+   hit.addEventListener('click',()=>{selectedIndex=p.index;notifySelection();draw();});
+ });
+
+  const current=daewoons.find(p=>p.current);
+ if(current){
+   const g=current.guide;
+   const cy=tableY+cardH*2+gapY+29;
+   el('circle',{cx:tableX+6,cy:cy-4,r:3.5,fill:'#6e857c'});
+   el('text',{x:tableX+17,y:cy,'font-size':10.5,'font-weight':800,fill:'#17202a'},'현재 대운');
+   el('text',{x:tableX+80,y:cy,'font-size':10.5,'font-weight':700,fill:'#864d38'},g.zone+'  ·  '+g.guide);
+   el('text',{x:tableX,y:cy+23,'font-size':9.5,'font-weight':500,fill:'#65717b'},'좌표는 길흉이 아니라 기운을 쓰는 방향을 보여줍니다.');
+ }
+ if(selectedIndex===null || !daewoons.some(p=>p.index===selectedIndex)) selectedIndex=current?current.index:daewoons[0]?.index;
+ const sel=daewoons.find(p=>p.index===selectedIndex);
+ if(sel){
+   const g=sel.guide, y=1030, x=58, w=644, h=280;
+   const years=sel.startYear!==null?sel.startYear+'~'+sel.endYear:'출생연도 입력 시 연도 표시';
+   el('rect',{x,y,width:w,height:h,rx:14,fill:'#fbfcfb',stroke:'#dce2e5','stroke-width':1});
+   el('rect',{x:x+1,y:y+1,width:5,height:h-2,rx:3,fill:'#6e857c'});
+   el('text',{x:x+18,y:y+27,'font-size':17,'font-weight':800,fill:'#17202a'},sel.gz+' · '+sel.age+'대');
+   el('text',{x:x+118,y:y+27,'font-size':12,fill:'#65717b'},years);
+   el('text',{x:x+w-18,y:y+27,'text-anchor':'end','font-size':12,'font-weight':800,fill:'#864d38'},g.zone);
+   el('text',{x:x+18,y:y+55,'font-size':14.5,'font-weight':800,fill:'#17202a'},g.guide);
+
+   drawGauge(x+128,y+86,388,'심화','확장',sel.x);
+   drawGauge(x+128,y+119,388,'축적','구현',sel.y);
+   const xSummary=gaugeDirection(sel.x,'심화','확장')+' '+gaugeLevel(sel.x);
+   const ySummary=gaugeDirection(sel.y,'축적','구현')+' '+gaugeLevel(sel.y);
+   el('text',{x:x+w/2,y:y+145,'text-anchor':'middle','font-size':10.5,'font-weight':700,fill:'#65717b'},xSummary+' · '+ySummary);
+
+   el('line',{x1:x+18,y1:y+158,x2:x+w-18,y2:y+158,stroke:'#e4e9e8','stroke-width':1});
+   el('text',{x:x+18,y:y+184,'font-size':11.5,'font-weight':800,fill:'#65717b'},'지향');
+   el('text',{x:x+58,y:y+184,'font-size':11.2,'font-weight':700,fill:'#45423b'},g.keys);
+   el('text',{x:x+18,y:y+211,'font-size':11.5,'font-weight':800,fill:'#65717b'},'활용');
+   el('text',{x:x+58,y:y+211,'font-size':11,fill:'#53616a'},g.aim);
+   el('text',{x:x+18,y:y+238,'font-size':11.5,'font-weight':800,fill:'#65717b'},'지양');
+   el('text',{x:x+58,y:y+238,'font-size':11,fill:'#53616a'},g.avoid);
+   el('text',{x:x+18,y:y+265,'font-size':11.5,'font-weight':800,fill:'#65717b'},'질문');
+   el('text',{x:x+58,y:y+265,'font-size':11,fill:'#53616a'},g.question);
+ }
+}
+
+const STORE_KEY='hannanjoseup_people_v2';
+
+function getPeople(){
+  try{return JSON.parse(localStorage.getItem(STORE_KEY)||'{}')}catch(e){return {}}
+}
+function putPeople(obj){
+  localStorage.setItem(STORE_KEY,JSON.stringify(obj));
+  refreshSaved();
+}
+function formData(){
+  return {
+    name:document.getElementById('name').value.trim()||'이름 없음',
+    birthYear:+document.getElementById('birthYear').value || null,
+    month:document.getElementById('month').value.trim(),
+    age:+document.getElementById('age').value,
+    dir:+document.getElementById('dir').value,
+    count:8,
+    memo:document.getElementById('memo').value,
+    showAge:document.getElementById('showAge').checked,
+    showGrid:document.getElementById('showGrid').checked,
+    savedAt:new Date().toISOString()
+  };
+}
+function savePerson(){
+  const d=formData();
+  if(ganzhi.indexOf(d.month)<0){alert('먼저 올바른 월주를 입력해줘.');return}
+  const people=getPeople();
+  people[d.name]=d;
+  putPeople(people);
+  document.getElementById('savedPeople').value=d.name;
+  alert(d.name+' 저장 완료!');
+}
+function refreshSaved(){
+  const sel=document.getElementById('savedPeople');
+  const current=sel.value;
+  const people=getPeople();
+  sel.innerHTML='<option value="">선택해서 불러오기</option>';
+  Object.keys(people).sort((a,b)=>a.localeCompare(b,'ko')).forEach(name=>{
+    const o=document.createElement('option');o.value=name;o.textContent=name;sel.appendChild(o);
+  });
+  if(people[current]) sel.value=current;
+}
+function loadPerson(name){
+  if(!name)return;
+  const d=getPeople()[name]; if(!d)return;
+  document.getElementById('name').value=d.name||name;
+  document.getElementById('birthYear').value=d.birthYear||'';
+  document.getElementById('month').value=d.month||'';
+  document.getElementById('age').value=d.age??7;
+  document.getElementById('dir').value=String(d.dir??-1);
+  document.getElementById('count').value=8;
+  document.getElementById('memo').value=d.memo||'';
+  document.getElementById('showAge').checked=d.showAge!==false;
+  document.getElementById('showGrid').checked=d.showGrid!==false;
+  draw();
+}
+function deletePerson(){
+  const name=document.getElementById('savedPeople').value;
+  if(!name){alert('삭제할 인물을 먼저 선택해줘.');return}
+  if(!confirm(name+' 데이터를 삭제할까?'))return;
+  const people=getPeople(); delete people[name]; putPeople(people); clearForm();
+}
+function clearForm(){
+  document.getElementById('name').value='';
+  document.getElementById('birthYear').value='';
+  document.getElementById('month').value='';
+  document.getElementById('memo').value='';
+  document.getElementById('savedPeople').value='';
+}
+function exportData(){
+  const payload={app:'한난조습 지도',version:2,exportedAt:new Date().toISOString(),people:getPeople()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='한난조습_임상데이터_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importData(ev){
+  const file=ev.target.files&&ev.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(r.result);
+      const incoming=data.people||data;
+      if(!incoming || typeof incoming!=='object' || Array.isArray(incoming))throw new Error();
+      const merged={...getPeople(),...incoming};
+      putPeople(merged);
+      alert(Object.keys(incoming).length+'명 데이터를 복원했어.');
+    }catch(e){alert('백업 파일을 읽지 못했어.');}
+    ev.target.value='';
+  };
+  r.readAsText(file,'utf-8');
+}
+function savePNG(){
+  const svg=document.getElementById('map');
+  const clone=svg.cloneNode(true);
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const xml=new XMLSerializer().serializeToString(clone);
+  const blob=new Blob([xml],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob), img=new Image();
+  img.onload=()=>{
+    const canvas=document.createElement('canvas');canvas.width=1520;canvas.height=2500;
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(png=>{
+      const a=document.createElement('a');a.href=URL.createObjectURL(png);
+      const nm=(document.getElementById('name').value.trim()||'대운흐름지도').replace(/[\\/:*?"<>|]/g,'_');
+      a.download=nm+'_별해당_대운흐름지도.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    },'image/png');
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);alert('PNG 생성에 실패했어.');};
+  img.src=url;
+}
+applyQuery();
+refreshSaved();
+draw();
+
+</script>
+</body></html>
